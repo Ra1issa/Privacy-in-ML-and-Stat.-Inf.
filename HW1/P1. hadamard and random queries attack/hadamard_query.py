@@ -30,19 +30,22 @@ def enviornment():
 
     res = []
     for i in range(0,len(n)):
+
         tmp2 = []
         for k in range(0,len(sigma[i])):
+            
             tmp = []
             for j in range(0,20):
                 x = np.random.randint(2, size=n[i])
                 a = mechanism(x, H[i], n[i], sigma[i][k])
                 x2 = attacker(a, H[i], n[i], sigma[i][k])
+
                 tmp.append(hlp.hamming(x,x2)/float(n[i]))
             tmp2.append(np.average(tmp))
         res.append(tmp2)
         bound = np.multiply(np.square(sigma[i]),(n[i]*4))
-        hlp.format_subplot(n,sigma,res,i,bound)
+        hlp.formatplot_hadamard(n,sigma,res,i,bound)
 
-    hlp.format_plot()
+    plt.show()
 
 enviornment()

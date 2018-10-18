@@ -11,28 +11,38 @@ import matplotlib.pyplot as plt
 import scipy.linalg
 
 hamming = lambda n, m: sum([ int(n[i]) ^ int(m[i]) for i in range(len(n))])
-# myround = lambda x: 1 if x >= 0.5 else 0
-
 generate_m = lambda x: [int(round(1.1*x)), 4*x, 16*x]
 generate_sigma = lambda x: [2**-j for j in range(1,np.log2(math.sqrt(32*x)).astype(int) + 1)]
 generate_H = lambda x: scipy.linalg.hadamard(x)
 
-def  format_subplot(n,sigma,res,i,bound):
+def  formatplot_randomattack(n,sigma,res,i,m):
+    title = 'Error Growth of rand. reconst.n attack as a function of sigma, for n:'+str(n[i])
+    name = 'plots/random/n'+str(n[i])+'m'+str(m)+'.png'
+
+    plt.title(title)
+    plt.plot(list(sigma[i]), list(res),'-o', label='value of m='+str(m))
+
+    plt.xlim(0,sigma[i][0])
+    plt.ylim(0,0.6)
+
+    plt.ylabel('Fraction. Error (Ham/n)')
+    plt.xlabel('sigma')
+
+    plt.legend(loc='best')
+    plt.savefig(name)
+
+def formatplot_hadamard(n,sigma,res,i,bound):
     title = 'Error Growth of Hadamard reconstruction attack as a function of sigma and n'
+    name = 'plots/hadamard/hadamard_superimposed.png'
+
     plt.title(title)
     plt.plot(list(sigma[i]), list(res[i]),'-o', label='n:'+str(n[i]))
-    #plt.plot(list(sigma[i]), list(bound),'-', label=' bound')
+
     plt.xlim(0,0.5)
     plt.ylim(0,0.6)
-    plt.ylabel('Fraction. Error (Ham/n)')
-    plt.xlabel('sigma')
-    plt.legend(loc='best')
-    # name = 'n'+str(n[i])+'m'+str(m)+'.png'
-    # plt.savefig(name)
 
-def format_plot():
     plt.ylabel('Fraction. Error (Ham/n)')
     plt.xlabel('sigma')
-    #plt.subplots_adjust(top=0.92, bottom=0.08, left=0.10, right=0.95, hspace=0.25,wspace=0.35)
+    
     plt.legend(loc='best')
-    plt.show()
+    plt.savefig(name)

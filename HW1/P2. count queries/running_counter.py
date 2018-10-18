@@ -3,103 +3,119 @@ import numpy as np
 import math
 import sys
 import gc
+import helper_functions as hlp
 import matplotlib.pyplot as plt
 import scipy.linalg
 
+# diff=a[i] - a[i-1] = x_i + z_i - z_{i-1}
+# Certain vs Non-Certain cases:
+# if diff = 2 then (x_i,z_i,z_{i-1}) = (1,1,0) no other possibility
+# if diff = -1 then (x_i,z_i,z_{i-1}) = (0,0,1) no other possibility
+# if diff = 0 then (x_i,z_i,z_{i-1}) =  (1,0,1) or (0,1,1) or (0,0,0)
+# if diff = 1 then (x_i,z_i,z_{i-1}) =  (1,1,1) or (0,1,0) or (1,0,0)
 
-hamming = lambda n, m: sum([ int(n[i]) ^ int(m[i]) for i in range(len(n))   ]  )
-myround = lambda x: 1 if x >= 0.5 else 0
-coin  = lambda x,y,p: x if(random.random() < p) else y
+def cases_rand(value, x):
+    return {
+        'base0': lambda x: [0,1], # if a[0] = 0, then we know that z[0] = 0
+        'base1': lambda x: [random.randint(0,1), 0],# if a[0] = 1, then we aren't sure about z and flip a coin
+        'base2': lambda x: [1,1], # if a[0] = 2, then we know that z[0] = 1
+        '-1': lambda x: [[0,1], [1,1]], #if diff = -1, the with certainty x_i=0,z_i=0,z_{i-1}=1
+         '0': lambda x: [[0,0], x], #if diff = 0, we are not sure and just set z_i:=0
+         '1': lambda x: [[0,0], x], #if diff= 1, we are not sure and just set z_i:=0
+         '2': lambda x: [[1,1] ,[0,1]], #if diff = 2, the with certainty x_i=1,z_i=1,z_{i-1}=0
+         'backtrack11': lambda x: [1,0], #if diff = 1 and z_{i-1}=1, then z_i=1 with large likelyhood
+         'backtrack10': lambda x: x, #if diff = 1 and z_{i-1}=0, there are multiple ways to pick z_i, do nothing
+         'backtrack01': lambda x: x, #if diff = 0 and z_{i-1}=1, there are multiple ways to pick z_i, do nothing
+         'backtrack00': lambda x: [0,0],#if diff= 0 and z_{i-1}=0, then z_i=1 with large likelyhood
+    }.get(value)(x)
+
+
+# In the apriori case, we will assume that we have a correct guess of x
+# (and be right 2/3 of the time) and do the following for the uncertain case:
+#
+# if diff = 0 then (x_i,z_i,z_{i-1}) =  (1,0,1) or (0,1,1) or (0,0,0) each with equal likelyhood:
+#    in this cases z_i != x_i for (1,0,1) and (0,1,1) i.e. 2/3 of the time
+#    so with probability 2/3 we set z_i to !x_i and
+#    with probability 1/3 we it to x_i
+#
+# if diff = 1 then (x_i,z_i,z_{i-1}) =  (1,1,1) or (0,1,0) or (1,0,0):
+#    in this cases z_i != x_i for (0,1,0) or (1,0,0) i.e. 2/3 of the time
+#    so with probability 2/3 we set z_i to !x_i and (since each event is equally likely)
+#    with probability 1/3 we it to x_i
+
+
+def cases_apriori(value, x):
+    return {
+        'base0': lambda x,y: [0,1],
+        'base1': lambda x,y: [-1*y, 0],# if a[0]=1 then Z[0] = !x[0]
+        'base2': lambda x,y: [1,1],
+        '-1': lambda x,y: [[0,1], [1,1]],
+         '0': lambda x,y: [[hlp.coin(y,-1*y+1,1.0/3.0),0], x],
+         '1': lambda x,y: [[hlp.coin(y,-1*y+1,1.0/3.0),0], x],
+         '2': lambda x: [[1,1] ,[0,1]],
+         'backtrack11': lambda x,y: [1,0],
+         'backtrack10': lambda x,y: x,
+         'backtrack01': lambda x,y: x,
+         'backtrack00': lambda x,y: [0,0],
+    }.get(value)(x)
+
 def mechanism(x):
     a = [sum(x[:i+1])+random.randint(0,1) for i in range(0,len(x))]
     return a
 
 def attacker_random(a):
-    x = [0] * len(a)
-    z = [0] * len(a)
-    diff = [0] * len(a)
-    sure = [0] * len(a)
-
     lowtri = [[1]*(i+1) + [0]*(len(a) - i - 1) for i in xrange(len(a))]
-    # a[i+1] - a[i] =  Z_{i+1} + x_{i+1} - Z_i
-    # a[i] - a[i-1] =  Z_{i} + x_{i} - Z_{i-1}
-    if(a[0] == 2):
-        z[0] = 1
-        sure[0]=1
-    elif(a[0] == 0):
-        z[0] = 0
-        sure[0]=1
-    else:
-        z[0] = random.randint(0,1)
-        sure[0]=0
-    flag = 0
+    x = [0] * len(a)
+    z = [[0,0]] * len(a)
 
-    # First set the Z's that are certain
-    for i in range(1,len(a)-1) :
-        diff1 = a[i] - a[i-1]
-        if(diff1 == 2):
-            z[i] = 1
-            z[i-1] = 0
-            sure[i]=1
-            sure[i-1]=1
-        elif(diff1 == -1):
-            z[i] = 0
-            z[i-1] = 1
-            sure[i]=1
-            sure[i-1]=1
+    # Look for certain cases of Z
+    for i in range(0,len(a)-1) :
+        if(i == 0):
+            print 'base case'
+            diff1 = a[0]
+            z[i] = cases_rand('base'+str(diff1), z[i])
         else:
-            z[i] = 0
+            print 'finding certain z, i:'+ str(i)
+            diff1 = a[i] - a[i-1]
+            [z[i], z[i-1]]= cases_rand(str(diff1), z[i-1])
 
+    # Backtrack to find other possible nearly-certain cases of Z
     for i in range(1,len(a)-1) :
          diff1 = a[i] - a[i-1]
-         if(sure[i] == 0):
-             if(diff1 == 1):
-                 if(z[i-1]==1):
-                     z[i] = 1
-             elif(diff1 == 0):
-                  if(z[i-1]==0):
-                      z[i] = 0
-    x = np.linalg.solve(np.matrix(lowtri), np.subtract(np.array(a),np.array(z)))
+         if(z[i][1] == 0):
+             print 'backtracking, at iteration'+ str(i)
+             z[i] = cases_rand('backtrack'+str(diff1)+str(z[i-1][0]), z[i])
+
+    values_z = np.array(hlp.firstelements(z))
+    x = np.linalg.solve(np.matrix(lowtri), np.subtract(np.array(a),values_z))
     return x
 
 
-def attacker_inference(a, w):
-    x = [0] * len(a)
-    z = np.random.choice(2, len(a))
-    diff = [0] * len(a)
-    sure = [0] * len(a)
+def attacker_apriori(a, w):
     lowtri = [[1]*(i+1) + [0]*(len(a) - i - 1) for i in xrange(len(a))]
-    # a[i+1] - a[i] =  Z_{i+1} + x_{i+1} - Z_i
-    # a[i] - a[i-1] =  Z_{i} + x_{i} - Z_{i-1}
-    if(a[0] == 2):
-        z[0] = 1
-        sure[0] = 1
-    elif(a[0] == 0):
-        z[0] = 0
-        sure[0] = 1
-    else:
-        z[0] = coin(w[0],-1*w[0]+1,1.0/3.0)
-    # First set the Z's that are certain
-    for i in range(1,len(a)-1) :
-        diff1 = a[i] - a[i-1] # x_i+Z_i-Z_{i-1}
-        if(diff1 == 2):
-            z[i] = 1
-            z[i-1] = 0
-            sure[i] = 1
-            sure[i-1] = 1
-        else: #state 0: 101 011 000 state 1: 111 010 100
-            z[i] = coin(w[i],-1*w[i]+1,1.0/3.0)
+    x = [0] * len(a)
+    z = [[0,0]] * len(a)
 
+    # Look for certain cases of Z
     for i in range(1,len(a)-1) :
-         diff1 = a[i] - a[i-1]
-         if(sure[i] == 0):
-             if(diff1 == 1):
-                 if(z[i-1]==1):
-                     z[i] = 1
-             # elif(diff1 == 0):
-             #      if(z[i-1]==0):
-             #          z[i] = 0
-    x = np.linalg.solve(np.matrix(lowtri), np.subtract(np.array(a),np.array(z)))
+        if(i == 0):
+            print 'base case'
+            diff1 = a[0]
+            z[i] = cases_rand('base'+str(diff1), z[i])
+        else:
+            print 'finding certain z, i:'+ str(i)
+            diff1 = a[i] - a[i-1]
+            [z[i], z[i-1]]= cases_rand(str(diff1), z[i-1])
+
+    # Backtrack to find other possible nearly-certain cases of Z
+    for i in range(1,len(a)-1) :
+        diff1 = a[i] - a[i-1]
+        if(z[i][1] == 0):
+             print 'backtracking, at iteration'+ str(i)
+             z[i] = cases_rand('backtrack'+str(diff1)+str(z[i-1][0]), z[i])
+
+    values_z = np.array(hlp.firstelements(z))
+    x = np.linalg.solve(np.matrix(lowtri), np.subtract(np.array(a),values_z))
     return x
 
 
@@ -107,40 +123,28 @@ def attacker_inference(a, w):
 def enviornment():
     n = [100, 500, 1000, 5000]
     pr = 2.0/3.0
+
     res1 = []
     res2 = []
     res_rand = []
-    res_inf = []
-    for i in range(len(n)):
+    res_apriori = []
 
+    for i in range(len(n)):
         for j in range(20):
             x = np.random.randint(2, size= n[i])
-            w = [ coin(x[k],-1*x[k]+1, 2.0/3.0) for k in range(n[i])]
+            w = [ hlp.coin(x[k],-1*x[k]+1, 2.0/3.0) for k in range(n[i])]
+
             a = mechanism(x)
             x_r = attacker_random(a)
-            x_i = attacker_inference(a, w)
-            res1.append(hamming(x,x_r)/float(n[i]))
-            res2.append(hamming(x,x_i)/float(n[i]))
+            x_i = attacker_apriori(a, w)
+
+            res1.append(hlp.hamming(x,x_r)/float(n[i]))
+            res2.append(hlp.hamming(x,x_i)/float(n[i]))
         res_rand.append( np.mean(res1))
-        res_inf.append( np.mean(res2))
+        res_apriori.append( np.mean(res2))
 
-    print list(res_rand)
-    print list(n)
-    plt.plot(list(n), list(res_rand),'-o', label='rand')
-    plt.plot(list(n), list(res_inf),'-o', label='apriori')
-    #plt.plot(list(sigma[i]), list(bound),'-', label=' bound')
-    plt.ylabel('Fraction. Error (Ham/n)')
-    plt.xlabel('n')
-    #plt.subplots_adjust(top=0.92, bottom=0.08, left=0.10, right=0.95, hspace=0.25,wspace=0.35)
-    plt.legend(loc='best')
-
-    rand_av = np.mean(res_rand)
-    rand_std = np.std(res_rand)
-    print "Random attack average:"+str(rand_av)+" standard deviation:"+str(rand_std)
-    inf_av = np.mean(res_inf)
-    inf_Std = np.std(res_inf)
-    print "Attack with a-priori knowledge average:"+str(inf_av)+" standard deviation:"+str(inf_Std)
+    hlp.formatplot_countqueries(n, res_rand, res_apriori)
+    hlp.print_metrics(res_rand, res_apriori)
     plt.show()
-    return
 
 enviornment()

@@ -1,6 +1,6 @@
 ## Privacy in Machine Learning and Statistical Inference
 ## Reconstruction Attack:
-##The Hadamard Attack and Random Queries
+##The Random Queries
 ## author: Rawane Issa
 
 import random
@@ -37,28 +37,30 @@ def enviornment():
     m = map(hlp.generate_m, n)
     sigma = map(hlp.generate_sigma, n)
 
-    for i in range(2, len(n)):
-        plt.clf()
+    for i in range(0, len(n)):
         m = [int(round(1.1*n[0])), 4*n[0], 16*n[0]]
+        plt.clf()
+
         for l in range(0, len(m)):
-            tmp2 = []
             B = np.matrix(np.random.randint(2, size=(m[l], n[i])))
 
+            tmp2 = []
             res = []
             for k in range(0,len(sigma[i])):
 
                 tmp = []
                 for j in range(0,20):
+
                     x = np.random.randint(2, size=(n[i],1))
                     a = mechanism(x, B, m[l], n[i], sigma[i][k])
                     x2 = attacker(a, B, sigma[i][k])
-                    tmp.append(hlp.hamming(x,x2)*100/float(n[i]))
-                print sum(tmp)/len(tmp)
+
+                    tmp.append(hlp.hamming(x,x2)/float(n[i]))
                 tmp2.append(sum(tmp)/len(tmp))
-
             res.append(tmp2)
-            #hlp.format_subplot(n,sigma,res,i,m[l])
+            hlp.formatplot_randomattack(n,sigma,res[0],i,m[l])
+        plt.show()
 
-    #hlp.format_plot()
+    plt.show()
 
 enviornment()
