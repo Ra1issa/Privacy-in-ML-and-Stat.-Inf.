@@ -16,31 +16,37 @@ def mechanism(x):
 
 def attacker_random(a):
     x = [0] * len(a)
-    z = np.random.choice(2, len(a))
+    z = [0] * len(a)
     diff = [0] * len(a)
-    sure = 0
+    sure = [0] * len(a)
 
     lowtri = [[1]*(i+1) + [0]*(len(a) - i - 1) for i in xrange(len(a))]
     # a[i+1] - a[i] =  Z_{i+1} + x_{i+1} - Z_i
     # a[i] - a[i-1] =  Z_{i} + x_{i} - Z_{i-1}
     if(a[0] == 2):
         z[0] = 1
+        sure[0]=1
     elif(a[0] == 0):
         z[0] = 0
+        sure[0]=1
     else:
         z[0] = random.randint(0,1)
+        sure[0]=0
     flag = 0
 
     # First set the Z's that are certain
     for i in range(1,len(a)-1) :
         diff1 = a[i] - a[i-1]
-        diff2 = a[i+1] - a[i]
         if(diff1 == 2):
             z[i] = 1
             z[i-1] = 0
-        elif(diff2 == -1):
-            z[i] = 1
-            z[i+1] = 0
+            sure[i]=1
+            sure[i-1]=1
+        elif(diff1 == -1):
+            z[i] = 0
+            z[i-1] = 1
+            sure[i]=1
+            sure[i-1]=1
         else:
             z[i] = 0
             # if(diff1==0 and diff2==0):
@@ -51,9 +57,15 @@ def attacker_random(a):
             #     z[i] = coin(1,0,1.0/5.0)
             # elif(diff1==1 and diff2==1):
             #     z[i] = coin(1,0,0.5)
-
-    print sure
-    print len(a)-sure-1
+    for i in range(1,len(a)-1) :
+         diff1 = a[i] - a[i-1]
+         if(sure[i] == 0):
+             if(diff1 == 1):
+                 if(z[i-1]==1):
+                     z[i] = 1
+             elif(diff1 == 0):
+                  if(z[i-1]==0):
+                      z[i] = 0
     x = np.linalg.solve(np.matrix(lowtri), np.subtract(np.array(a),np.array(z)))
     return x
 
@@ -62,15 +74,16 @@ def attacker_inference(a, w):
     x = [0] * len(a)
     z = np.random.choice(2, len(a))
     diff = [0] * len(a)
-    sure = 0
-
+    sure = [0] * len(a)
     lowtri = [[1]*(i+1) + [0]*(len(a) - i - 1) for i in xrange(len(a))]
     # a[i+1] - a[i] =  Z_{i+1} + x_{i+1} - Z_i
     # a[i] - a[i-1] =  Z_{i} + x_{i} - Z_{i-1}
     if(a[0] == 2):
         z[0] = 1
+        sure[0] = 1
     elif(a[0] == 0):
         z[0] = 0
+        sure[0] = 1
     else:
         z[0] = coin(w[0],-1*w[0]+1,1.0/3.0)
     # First set the Z's that are certain
@@ -80,9 +93,13 @@ def attacker_inference(a, w):
         if(diff1 == 2):
             z[i] = 1
             z[i-1] = 0
+            sure[i] = 1
+            sure[i-1] = 1
         elif(diff2 == -1):
             z[i] = 1
             z[i+1] = 0
+            sure[i] = 1
+            sure[i-1] = 1
         else: #state 0: 101 011 000 state 1: 111 010 100
             z[i] = coin(w[i],-1*w[i]+1,1.0/3.0)
             if(diff1==0 and diff2==0): # 000->000, 101->000, 011->101
@@ -98,7 +115,15 @@ def attacker_inference(a, w):
                 prediction = coin(w[i],-1*w[i]+1,1.0/2.0)
                 z[i] = coin(prediction,-1*prediction+1,2.0/3.0)
 
-    print len(a)-sure-1
+    for i in range(1,len(a)-1) :
+         diff1 = a[i] - a[i-1]
+         if(sure[i] == 0):
+             if(diff1 == 1):
+                 if(z[i-1]==1):
+                     z[i] = 1
+             elif(diff1 == 0):
+                  if(z[i-1]==0):
+                      z[i] = 0
     x = np.linalg.solve(np.matrix(lowtri), np.subtract(np.array(a),np.array(z)))
     return x
 
