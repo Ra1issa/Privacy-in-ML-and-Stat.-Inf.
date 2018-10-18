@@ -57,10 +57,7 @@ def enviornment():
                 tmp2.append(sum(tmp)/len(tmp))
 
             res.append(tmp2)
-            hlp.format_subplot(n,sigma,res,i,m[l])
-
-            bound = np.multiply(np.square(sigma[i]),(n[i]*4))
-
+            #hlp.format_subplot(n,sigma,res,i,m[l])
 
     #hlp.format_plot()
 
