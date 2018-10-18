@@ -13,7 +13,6 @@ import scipy.linalg
 # if diff = -1 then (x_i,z_i,z_{i-1}) = (0,0,1) no other possibility
 # if diff = 0 then (x_i,z_i,z_{i-1}) =  (1,0,1) or (0,1,1) or (0,0,0)
 # if diff = 1 then (x_i,z_i,z_{i-1}) =  (1,1,1) or (0,1,0) or (1,0,0)
-
 def cases_rand(value, x):
     return {
         'base0': lambda x: [0,1], # if a[0] = 0, then we know that z[0] = 0
@@ -42,8 +41,6 @@ def cases_rand(value, x):
 #    in this cases z_i != x_i for (0,1,0) or (1,0,0) i.e. 2/3 of the time
 #    so with probability 2/3 we set z_i to !x_i and (since each event is equally likely)
 #    with probability 1/3 we it to x_i
-
-
 def cases_apriori(value, x):
     return {
         'base0': lambda x,y: [0,1],
