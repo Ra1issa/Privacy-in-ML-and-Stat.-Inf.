@@ -37,7 +37,7 @@ def enviornment():
     m = map(hlp.generate_m, n)
     sigma = map(hlp.generate_sigma, n)
 
-    for i in range(0, len(n)):
+    for i in range(2, len(n)):
         plt.clf()
         m = [int(round(1.1*n[0])), 4*n[0], 16*n[0]]
         for l in range(0, len(m)):

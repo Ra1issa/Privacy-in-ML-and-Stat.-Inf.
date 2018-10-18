@@ -14,12 +14,12 @@ import scipy.linalg
 
 def mechanism(x, H, n , sigma):
     Y = np.random.normal(0, sigma, n)
-    a = (1.0/n) * B.dot(x) + Y
+    a = (1.0/n) * H.dot(x) + Y
     return a
 
 def attacker(a, H, n , sigma):
     z = np.matmul(H,a)
-    x = map(hlp.myround,z)
+    x = [(0 if a < 0.5 else 1) for a in z]
     return x
 
 
@@ -37,7 +37,7 @@ def enviornment():
                 x = np.random.randint(2, size=n[i])
                 a = mechanism(x, H[i], n[i], sigma[i][k])
                 x2 = attacker(a, H[i], n[i], sigma[i][k])
-                tmp.append(hlp.hamming(x,x2)*100/float(n[i]))
+                tmp.append(hlp.hamming(x,x2)/float(n[i]))
             tmp2.append(np.average(tmp))
         res.append(tmp2)
         bound = np.multiply(np.square(sigma[i]),(n[i]*4))
